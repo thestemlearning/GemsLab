@@ -17,9 +17,11 @@ import Reprint from './pages/Reprint';
 import Verify from './pages/Verify';
 
 export default function App() {
+  const basename = import.meta.env.VITE_BASE_PATH || '/';
+  
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename === '/' ? undefined : basename}>
         <div className="flex bg-slate-50 text-slate-900 min-h-screen">
           <Navbar />
           <main className="flex-1 pl-64">

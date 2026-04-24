@@ -130,42 +130,71 @@ export default function NewReport() {
 
       // 3. Save to database
       console.log('Finalizing report record...', { reportId });
+      
+      const reportPayload = {
+        report_id: reportId,
+        client_name: formData.client_name,
+        gem_type: formData.gem_type,
+        shape: formData.shape,
+        cut: formData.cut,
+        weight: parseFloat(formData.weight),
+        dimension: formData.dimension,
+        color: formData.color,
+        clarity: formData.clarity,
+        transparency: formData.transparency,
+        magnification: formData.magnification,
+        refractive_index: formData.refractive_index,
+        origin: formData.origin,
+        treatment: formData.treatment,
+        description: formData.description,
+        image_url: imageUrl,
+        created_by: user.id,
+        created_at: createdAt,
+        data_hash: dataHash,
+      };
+
+      console.log('Payload for insert:', reportPayload);
+
       const { data, error } = await supabase
         .from('gem_reports')
-        .insert({
-          report_id: reportId,
-          client_name: formData.client_name,
-          gem_type: formData.gem_type,
-          shape: formData.shape,
-          cut: formData.cut,
-          weight: parseFloat(formData.weight),
-          dimension: formData.dimension,
-          color: formData.color,
-          clarity: formData.clarity,
-          transparency: formData.transparency,
-          magnification: formData.magnification,
-          refractive_index: formData.refractive_index,
-          origin: formData.origin,
-          treatment: formData.treatment,
-          description: formData.description,
-          image_url: imageUrl,
-          created_by: user.id,
-          created_at: createdAt,
-          data_hash: dataHash,
-        })
-        .select()
-        .single();
+        .insert(reportPayload)
+        .select();
 
       if (error) {
         console.error('Database insertion failed:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
         if (error.code === '42501') {
-          throw new Error('Permission denied. Please check if Row-Level Security (RLS) policies are configured for the "gem_reports" table in Supabase.');
+          throw new Error('RLS Policy Error: You do not have permission to insert into "gem_reports". Please go to your Supabase Dashboard -> Authentication -> Policies and add an INSERT policy.');
         }
-        throw error;
+        throw new Error(`Database error (${error.code}): ${error.message}`);
       }
 
-      console.log('Operation complete. Transitioning to preview.');
-      setCreatedReport(data);
+      if (!data || data.length === 0) {
+        console.warn('Insert appeared to succeed but no data was returned. Attempting manual fetch...');
+        const { data: retryData, error: retryError } = await supabase
+          .from('gem_reports')
+          .select('*')
+          .eq('report_id', reportId)
+          .single();
+        
+        if (retryError) {
+          console.error('Retry fetch failed:', retryError);
+          setCreatedReport({ ...reportPayload, id: 'temp-' + Date.now() } as any);
+        } else {
+          setCreatedReport(retryData);
+        }
+      } else {
+        console.log('Record saved successfully:', data[0]);
+        setCreatedReport(data[0]);
+      }
+
+      console.log('Transitioning to preview mode...');
       setPreview(true);
     } catch (error: any) {
       console.error('Final Submission Error:', error);
@@ -301,14 +330,25 @@ export default function NewReport() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Colour & Clarity</label>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Colour</label>
                       <input
                         required
                         type="text"
                         value={formData.color}
                         onChange={(e) => setFormData({...formData, color: e.target.value})}
                         className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:bg-white transition-all font-medium"
-                        placeholder="e.g. Red"
+                        placeholder="e.g. pigeon blood red"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Clarity</label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.clarity}
+                        onChange={(e) => setFormData({...formData, clarity: e.target.value})}
+                        className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:bg-white transition-all font-medium"
+                        placeholder="e.g. Eye Clean"
                       />
                     </div>
                     <div className="space-y-1.5">

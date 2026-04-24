@@ -44,19 +44,32 @@ export default function NewReport() {
   });
 
   const generateReportId = async () => {
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-    
-    // Get sequence for the day
-    const { count } = await supabase
-      .from('gem_reports')
-      .select('id', { count: 'exact', head: true })
-      .filter('report_id', 'like', `TSG-${dateStr}-%`);
-    
-    const sequence = (count || 0) + 1;
-    const sequenceStr = sequence.toString().padStart(4, '0');
-    
-    return `TSG-${dateStr}-${sequenceStr}`;
+    try {
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      
+      // Get sequence for the day
+      console.log('Fetching sequence for report ID...');
+      const { count, error } = await supabase
+        .from('gem_reports')
+        .select('id', { count: 'exact', head: true })
+        .filter('report_id', 'like', `TSG-${dateStr}-%`);
+      
+      if (error) {
+        console.error('Error fetching report count:', error);
+        // Fallback to random string if DB count fails to prevent hanging
+        return `TSG-${dateStr}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      }
+      
+      const sequence = (count || 0) + 1;
+      const sequenceStr = sequence.toString().padStart(4, '0');
+      
+      return `TSG-${dateStr}-${sequenceStr}`;
+    } catch (err) {
+      console.error('Failed to generate report ID:', err);
+      const randomId = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      return `TSG-ERROR-${randomId}`;
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +116,7 @@ export default function NewReport() {
       const dataHash = CryptoJS.SHA256(hashContent).toString();
 
       // 3. Save to database
+      console.log('Inserting into gem_reports table...', { reportId });
       const { data, error } = await supabase
         .from('gem_reports')
         .insert({
@@ -129,11 +143,16 @@ export default function NewReport() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Error:', error);
+        throw error;
+      }
 
+      console.log('Record saved successfully:', data);
       setCreatedReport(data);
       setPreview(true);
     } catch (error: any) {
+      console.error('Submission error:', error);
       alert(error.message);
     } finally {
       setLoading(false);

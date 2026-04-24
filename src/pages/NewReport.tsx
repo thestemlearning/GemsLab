@@ -90,6 +90,10 @@ export default function NewReport() {
     
     setLoading(true);
     try {
+      // Ensure we have a fresh session to avoid lock errors during save
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Session expired. Please log in again.');
+
       console.log('Generating report ID...');
       const reportId = await generateReportId();
       let imageUrl = '';

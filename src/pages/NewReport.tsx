@@ -90,18 +90,26 @@ export default function NewReport() {
     
     setLoading(true);
     try {
+      console.log('Generating report ID...');
       const reportId = await generateReportId();
       let imageUrl = '';
 
       // 1. Upload image
       if (image) {
+        console.log('Uploading image...', image.name);
         const fileExt = image.name.split('.').pop();
         const fileName = `${user.id}/${reportId}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from('gem-images')
-          .upload(fileName, image);
+          .upload(fileName, image, {
+            cacheControl: '3600',
+            upsert: true
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload failed:', uploadError);
+          throw new Error(`Image upload failed: ${uploadError.message}`);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('gem-images')
@@ -111,12 +119,13 @@ export default function NewReport() {
       }
 
       // 2. Generate Hash
+      console.log('Generating data hash...');
       const createdAt = new Date().toISOString();
       const hashContent = `${reportId}${formData.gem_type}${formData.shape}${formData.weight}${formData.dimension}${createdAt}`;
       const dataHash = CryptoJS.SHA256(hashContent).toString();
 
       // 3. Save to database
-      console.log('Inserting into gem_reports table...', { reportId });
+      console.log('Finalizing report record...', { reportId });
       const { data, error } = await supabase
         .from('gem_reports')
         .insert({
@@ -144,16 +153,20 @@ export default function NewReport() {
         .single();
 
       if (error) {
-        console.error('Supabase Error:', error);
+        console.error('Database insertion failed:', error);
         throw error;
       }
 
-      console.log('Record saved successfully:', data);
+      console.log('Operation complete. Transitioning to preview.');
       setCreatedReport(data);
       setPreview(true);
     } catch (error: any) {
-      console.error('Submission error:', error);
-      alert(error.message);
+      console.error('Final Submission Error:', error);
+      if (error.message?.includes('Lock')) {
+        alert('Authentication sync error. Please try clicking "Save" again in a few seconds.');
+      } else {
+        alert(`Failed to save report: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }

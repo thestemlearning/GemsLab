@@ -1,0 +1,6 @@
+{
+  "name": "Gems Lab System",
+  "description": "A comprehensive gemstone certification management system with report generation, QR verification, and role-based access.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

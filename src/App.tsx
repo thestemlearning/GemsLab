@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/AuthRoutes';
 import { Navbar } from './components/Navbar';
@@ -17,11 +17,9 @@ import Reprint from './pages/Reprint';
 import Verify from './pages/Verify';
 
 export default function App() {
-  const basename = import.meta.env.VITE_BASE_PATH || '/';
-  
   return (
     <AuthProvider>
-      <BrowserRouter basename={basename === '/' ? undefined : basename}>
+      <Router>
         <div className="flex bg-slate-50 text-slate-900 min-h-screen">
           <Navbar />
           <main className="flex-1 pl-64">
@@ -40,7 +38,7 @@ export default function App() {
             </Routes>
           </main>
         </div>
-      </BrowserRouter>
+      </Router>
     </AuthProvider>
   );
 }

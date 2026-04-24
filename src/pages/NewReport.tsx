@@ -154,6 +154,9 @@ export default function NewReport() {
 
       if (error) {
         console.error('Database insertion failed:', error);
+        if (error.code === '42501') {
+          throw new Error('Permission denied. Please check if Row-Level Security (RLS) policies are configured for the "gem_reports" table in Supabase.');
+        }
         throw error;
       }
 
